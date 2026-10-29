@@ -5,7 +5,6 @@ on:
     - cron: 0 0 * * *
   workflow_dispatch:
 
-# 쓰기 권한 추가
 permissions:
   contents: write
 
@@ -20,16 +19,21 @@ jobs:
 
       - name: Commit files if changed
         run: |
-          git add -N .
+          # 줄바꿈(CRLF) 변환으로 인한 거짓 변경 감지 방지
+          git config --global core.autocrlf false
 
-          if [ -z "$(git ls-files --modified)" ]; then
+          # 변경 사항 스테이징
+          git add -A
+
+          # 실제로 커밋할 변경(diff)이 없는지 확인
+          if git diff --staged --quiet; then
               echo "[+] No files were changed"
           else
               echo "[+] Files were changed! Pushing changed..."
-              git add -A
               git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
               git config --local user.email "example@github.com"
               git config --local user.name "GitHub Action"
-              git commit -m "[Github Action] Automated trickest wordlists update."
+              # 변경점이 없어 커밋이 스킵되더라도 전체 프로세스가 에러로 중단되지 않도록 방어
+              git commit -m "[Github Action] Automated trickest wordlists update." || exit 0
               git push
           fi
